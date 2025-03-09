@@ -48,4 +48,103 @@ const addComment = async (req: Request, res: Response): Promise<any> => {
     return ErrorHandler(error.message, 500, req, res);
   }
 };
-export { createPost, addComment };
+const fetchPosts = async (req: Request, res: Response): Promise<any> => {
+  // #swagger.tags = ['post']
+  try {
+    const page = req.query.page ? parseInt(req.query.page as string) : 1;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+    const { search } = req.query || "";
+    const [posts, count] = await Promise.all([
+      prisma.post.findMany({
+        where: {
+          title: {
+            contains: search as string,
+            mode: "insensitive",
+          },
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.post.count(),
+    ]);
+    return SuccessHandler({ posts, count }, 200, res);
+  } catch (error: any) {
+    return ErrorHandler(error.message, 500, req, res);
+  }
+};
+// No of posts in each category
+const postsPerCategory = async (req: Request, res: Response): Promise<any> => {
+  // #swagger.tags = ['post']
+  try {
+    const posts = await prisma.category.findMany({
+      include: {
+        _count: {
+          select: {
+            posts: true,
+          },
+        },
+      },
+    });
+    return SuccessHandler(posts, 200, res);
+  } catch (error: any) {
+    return ErrorHandler(error.message, 500, req, res);
+  }
+};
+const trendingPosts = async (req: Request, res: Response): Promise<any> => {
+  // #swagger.tags = ['post']
+  try {
+    const posts = await prisma.post.findMany({
+      where: {
+        comments: {
+          some: {
+            createdAt: {
+              gte: new Date(new Date().getTime() - 24 * 60 * 60 * 1000), // 24 hours
+            },
+          },
+        },
+      },
+      orderBy: {
+        comments: { _count: "desc" },
+      },
+      take: 2,
+    });
+    return SuccessHandler(posts, 200, res);
+  } catch (error: any) {
+    return ErrorHandler(error.message, 500, req, res);
+  }
+};
+
+// Find the categories have the most posts.
+const topCategories = async (req: Request, res: Response): Promise<any> => {
+  // #swagger.tags = ['post']
+  try {
+    const posts = await prisma.category.findMany({
+      orderBy: {
+        posts: {
+          _count: "desc",
+        },
+      },
+      take: 3,
+      include: {
+        _count: {
+          select: {
+            posts: true,
+          },
+        },
+      },
+    });
+    return SuccessHandler(posts, 200, res);
+  } catch (error: any) {
+    return ErrorHandler(error.message, 500, req, res);
+  }
+};
+
+export {
+  createPost,
+  addComment,
+  fetchPosts,
+  postsPerCategory,
+  trendingPosts,
+  topCategories,
+};

@@ -7,5 +7,8 @@ const router: Router = express.Router();
 router.route("/").post(userController.createUser);
 router.route("/profile").post(userController.createUserProfile);
 router.route("/:id").get(userController.getUser);
+router.route("/:id").delete(userController.deleteUser);
+router.route("/stats/:id").get(userController.userStats);
+router.route("/latest-posts").get(userController.usersWithLatestPost);
 
 export default router;

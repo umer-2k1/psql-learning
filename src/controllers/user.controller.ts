@@ -24,7 +24,6 @@ const createUser = async (req: Request, res: Response): Promise<any> => {
   }
 };
 
-//Create a User Profile and link with user table
 const getUser = async (req: Request, res: Response): Promise<any> => {
   // #swagger.tags = ['user']
   try {
@@ -64,4 +63,70 @@ const createUserProfile = async (req: Request, res: Response): Promise<any> => {
   }
 };
 
-export { createUser, createUserProfile, getUser };
+const deleteUser = async (req: Request, res: Response): Promise<any> => {
+  // #swagger.tags = ['user']
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.delete({
+      where: { id },
+    });
+    return SuccessHandler(
+      { data: user.id, message: "User deleted successfully" },
+      200,
+      res
+    );
+  } catch (error: any) {
+    return ErrorHandler(error.message, 500, req, res);
+  }
+};
+
+const userStats = async (req: Request, res: Response): Promise<any> => {
+  // #swagger.tags = ['user']
+  try {
+    const { id } = req.params;
+    const user = await prisma.user.findUnique({
+      where: { id },
+      include: {
+        _count: {
+          select: {
+            posts: true,
+            comments: true,
+          },
+        },
+      },
+    });
+    return SuccessHandler(user, 200, res);
+  } catch (error: any) {
+    return ErrorHandler(error.message, 500, req, res);
+  }
+};
+const usersWithLatestPost = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  // #swagger.tags = ['user']
+  try {
+    console.log("I am here");
+
+    const users = await prisma.user.findMany({
+      // include: {
+      //   posts: {
+      //     take: 1,
+      //     orderBy: { createdAt: "desc" },
+      //   },
+      // },
+    });
+    return SuccessHandler(users, 200, res);
+  } catch (error: any) {
+    return ErrorHandler(error.message, 500, req, res);
+  }
+};
+
+export {
+  createUser,
+  createUserProfile,
+  getUser,
+  deleteUser,
+  userStats,
+  usersWithLatestPost,
+};
