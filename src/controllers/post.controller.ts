@@ -139,6 +139,48 @@ const topCategories = async (req: Request, res: Response): Promise<any> => {
     return ErrorHandler(error.message, 500, req, res);
   }
 };
+// Creating a Post with a Comment
+const createPostWithComment = async (
+  req: Request,
+  res: Response
+): Promise<any> => {
+  // #swagger.tags = ['post']
+  try {
+    const { title, content, authorId, categoryIds, comment } = req.body;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const post = await tx.post.create({
+        data: {
+          title,
+          content,
+          author: { connect: { id: authorId } },
+          categories:
+            categoryIds && categoryIds.length > 0
+              ? { connect: categoryIds.map((id: string) => ({ id })) }
+              : undefined,
+        },
+      });
+      const addComment = await tx.comment.create({
+        data: {
+          content: comment,
+          author: { connect: { id: authorId } },
+          post: { connect: { id: post.id } },
+        },
+      });
+
+      return { post, addComment };
+    });
+
+    return SuccessHandler(
+      { data: result, message: "Transaction successful!" },
+      201,
+      res
+    );
+  } catch (error: any) {
+    return ErrorHandler(error.message, 500, req, res);
+    console.error("Transaction failed:", error);
+  }
+};
 
 export {
   createPost,
