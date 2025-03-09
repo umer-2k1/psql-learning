@@ -1,6 +1,5 @@
 import app from "./app";
 import dotenv from "dotenv";
-import connectDB from "./config/db";
 import http from "http";
 import { Server, Socket } from "socket.io";
 import { addUser, removeUser } from "./functions/socketFunctions";
@@ -17,7 +16,6 @@ const PORT = (process.env.PORT as string) || 8001;
 var server = http.createServer(app);
 server.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
-  connectDB();
 });
 
 //socket.io
