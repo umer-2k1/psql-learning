@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import ErrorHandler from "../utils/ErrorHandler";
 import SuccessHandler from "../utils/SuccessHandler";
 import prisma from "../config/prisma";
+import Redis from "ioredis";
+
+const redis = new Redis();
 
 const createPost = async (req: Request, res: Response): Promise<any> => {
   // #swagger.tags = ['post']
@@ -54,6 +57,13 @@ const fetchPosts = async (req: Request, res: Response): Promise<any> => {
     const page = req.query.page ? parseInt(req.query.page as string) : 1;
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
     const { search } = req.query || "";
+    const cacheKey = `posts:page=${page}:limit=${limit}:search=${search}`;
+    const cachedData = await redis.get(cacheKey);
+
+    if (cachedData) {
+      return SuccessHandler(JSON.parse(cachedData), 200, res);
+    }
+
     const [posts, count] = await Promise.all([
       prisma.post.findMany({
         where: {
@@ -68,6 +78,9 @@ const fetchPosts = async (req: Request, res: Response): Promise<any> => {
       }),
       prisma.post.count(),
     ]);
+    const response = { posts, count };
+    await redis.set(cacheKey, JSON.stringify(response), "EX", 40);
+
     return SuccessHandler({ posts, count }, 200, res);
   } catch (error: any) {
     return ErrorHandler(error.message, 500, req, res);
@@ -77,6 +90,11 @@ const fetchPosts = async (req: Request, res: Response): Promise<any> => {
 const postsPerCategory = async (req: Request, res: Response): Promise<any> => {
   // #swagger.tags = ['post']
   try {
+    const cacheKey = "postsPerCategory";
+    const cachedData = await redis.get(cacheKey);
+    if (cachedData) {
+      return SuccessHandler(JSON.parse(cachedData), 200, res);
+    }
     const posts = await prisma.category.findMany({
       include: {
         _count: {
@@ -86,6 +104,7 @@ const postsPerCategory = async (req: Request, res: Response): Promise<any> => {
         },
       },
     });
+    await redis.set(cacheKey, JSON.stringify(posts), "EX", 120);
     return SuccessHandler(posts, 200, res);
   } catch (error: any) {
     return ErrorHandler(error.message, 500, req, res);
@@ -94,6 +113,12 @@ const postsPerCategory = async (req: Request, res: Response): Promise<any> => {
 const trendingPosts = async (req: Request, res: Response): Promise<any> => {
   // #swagger.tags = ['post']
   try {
+    const cacheKey = "trendingPosts";
+    const cachedData = await redis.get(cacheKey);
+    if (cachedData) {
+      return SuccessHandler(JSON.parse(cachedData), 200, res);
+    }
+
     const posts = await prisma.post.findMany({
       where: {
         comments: {
@@ -109,6 +134,8 @@ const trendingPosts = async (req: Request, res: Response): Promise<any> => {
       },
       take: 2,
     });
+
+    await redis.set(cacheKey, JSON.stringify(posts), "EX", 300); // Cache for 5 mins
     return SuccessHandler(posts, 200, res);
   } catch (error: any) {
     return ErrorHandler(error.message, 500, req, res);
@@ -119,6 +146,13 @@ const trendingPosts = async (req: Request, res: Response): Promise<any> => {
 const topCategories = async (req: Request, res: Response): Promise<any> => {
   // #swagger.tags = ['post']
   try {
+    const cacheKey = "topCategories";
+    const cachedData = await redis.get(cacheKey);
+
+    if (cachedData) {
+      return SuccessHandler(JSON.parse(cachedData), 200, res);
+    }
+
     const posts = await prisma.category.findMany({
       orderBy: {
         posts: {
@@ -134,6 +168,7 @@ const topCategories = async (req: Request, res: Response): Promise<any> => {
         },
       },
     });
+    await redis.set(cacheKey, JSON.stringify(posts), "EX", 600); // Cache for 10 mins
     return SuccessHandler(posts, 200, res);
   } catch (error: any) {
     return ErrorHandler(error.message, 500, req, res);
@@ -189,4 +224,5 @@ export {
   postsPerCategory,
   trendingPosts,
   topCategories,
+  createPostWithComment,
 };

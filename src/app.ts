@@ -44,7 +44,7 @@ app.use("/", router);
 app.use(handleInvalidRoute);
 
 // api doc
-app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerFile));
+// app.use("/api-docs", ...swaggerUi.serve, swaggerUi.setup(swaggerFile));
 
 app.get("/", (req: Request, res: Response) => {
   res.send("Nodejs-Typescript-template");
